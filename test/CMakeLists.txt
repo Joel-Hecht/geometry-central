@@ -109,6 +109,7 @@ set(TEST_SRCS
   src/polygon_operators_test.cpp
   src/stl_reader_test.cpp
   src/surface_misc_test.cpp
+  src/piecewise_edge_network_test.cpp
 )
 
 add_executable(geometry-central-test "${TEST_SRCS}")
