@@ -283,7 +283,7 @@ std::unique_ptr<FlipEdgeNetwork> FlipEdgeNetwork::constructFromDijkstraPath(Mani
 std::unique_ptr<FlipEdgeNetwork> FlipEdgeNetwork::constructFromPiecewiseDijkstraPath(ManifoldSurfaceMesh& mesh_,
                                                                                      IntrinsicGeometryInterface& geom,
                                                                                      std::vector<Vertex> points,
-                                                                                     bool closed, bool markInterior) {
+                                                                                     bool closed, bool markInterior, bool removeOverlap) {
 
 
   std::vector<Halfedge> halfedges;
@@ -307,8 +307,33 @@ std::unique_ptr<FlipEdgeNetwork> FlipEdgeNetwork::constructFromPiecewiseDijkstra
 
     halfedges.insert(halfedges.end(), dijkstraPath.begin(), dijkstraPath.end());
   }
+	
+	if(!removeOverlap || halfedges.size() == 0) {
+  	return std::unique_ptr<FlipEdgeNetwork>(new FlipEdgeNetwork(mesh_, geom, {halfedges}, extraMark));
+	}
 
-  return std::unique_ptr<FlipEdgeNetwork>(new FlipEdgeNetwork(mesh_, geom, {halfedges}, extraMark));
+	// 2 Adjacent Dijkstra paths may share edge(s) 
+	// This creates a 'back-and-forth' that FlipOut cannot solve
+	std::vector<Halfedge> heClean;
+	Halfedge hePrev, heNext;
+	size_t i, behind;
+	behind = 1;
+	heClean.push_back(halfedges[0]);
+	for(i = 1; i < halfedges.size(); i++) {
+		hePrev = halfedges[i - behind];
+		heNext = halfedges[i];
+		heClean.push_back(halfedges[i]);
+		if(hePrev.edge() == heNext.twin().edge()) {
+			/* Backtrack in case >2 edges overlap */
+			behind = (behind >= i) ? 1 : behind + 2; 
+			heClean.pop_back();
+			heClean.pop_back();
+		} else {
+			behind = 1;
+		}
+	}
+
+  return std::unique_ptr<FlipEdgeNetwork>(new FlipEdgeNetwork(mesh_, geom, {heClean}, extraMark));
 }
 
 
